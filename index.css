@@ -1,0 +1,16 @@
+@import url("https://webglfundamentals.org/webgl/resources/webgl-tutorials.css");
+body {
+  margin: 0;
+}
+canvas {
+  width: 50vw;
+  height: 50vh;
+  display: block;
+}
+
+/* button{
+  width: 200px;
+  height: 100px;
+  display: inline-block;
+  font-size: 16px;
+} */

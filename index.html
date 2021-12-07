@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+  <link rel="stylesheet" href="./index.css">
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="uiContainer">
+    <div id="ui">
+      <div id="fRotation"></div>
+      <div id="shininess"></div>
+    </div>
+  </div>
+  <div>
+    <button class="btn btn-primary" onclick="addFigure('cube')">Add Cube</button>
+    <button class="btn btn-danger" onclick="removeFigure('cube')">Remove Cube</button>
+  </div>
+  <div>
+    <button class="btn btn-primary" onclick="addFigure('sphere')">Add Sphere</button>
+    <button class="btn btn-danger" onclick="removeFigure('sphere')">Remove Sphere</button>
+  </div>
+  <div>
+    <button class="btn btn-primary" onclick="addFigure('cone')">Add Cone</button>
+    <button class="btn btn-danger" onclick="removeFigure('cone')">Remove Cone</button>
+  </div>
+
+  <div>
+    RotateX
+    <input type="range" id="sliderRotateX" min="-100" max="100" step="1" />
+    RotateY
+    <input type="range" id="sliderRotateY" min="-100" max="100" step="1" />
+    RotateZ
+    <input type="range" id="sliderRotateZ" min="-100" max="100" step="1" />
+  </div>
+
+  <div>
+    Scale
+    <input type="range" id="sliderScale" min="0" max="2" step="0.1" />
+    Move left-right
+    <input type="range" id="sliderX" min="-100" max="100" step="1" />
+    Move up-down
+    <input type="range" id="sliderY" min="-100" max="100" step="1" />
+    Move forward-backward
+    <input type="range" id="sliderZ" min="-100" max="100" step="1" />
+  </div>
+
+  <div>
+    CamX
+    <input type="range" id="sliderCamX" min="-100" max="100" step="1" />
+    CamY
+    <input type="range" id="sliderCamY" min="-100" max="100" step="1" />
+    CamZ
+    <input type="range" id="sliderCamZ" min="-100" max="100" step="1" value="100" />
+  </div>
+
+  <div>
+    FoV
+    <input type="range" id="sliderCamFov" min="0" max="180" step="1" value="60" />
+    Near
+    <input type="range" id="sliderCamNear" min="1" max="2000" step="1" value="1" />
+    Far
+    <input type="range" id="sliderCamFar" min="0" max="2000" step="1" value="2000" />
+  </div>
+  <!-- vertex shader -->
+  <script id="vertex-shader-3d" type="x-shader/x-vertex">
+      attribute vec4 a_position;
+      attribute vec3 a_normal;
+      
+      uniform vec3 u_lightWorldPosition;
+      uniform vec3 u_viewWorldPosition;
+      
+      uniform mat4 u_world;
+      uniform mat4 u_worldViewProjection;
+      uniform mat4 u_worldInverseTranspose;
+      
+      varying vec3 v_normal;
+      
+      varying vec3 v_surfaceToLight;
+      varying vec3 v_surfaceToView;
+      
+      uniform mat4 u_matrix;
+
+      void main() {
+        // Multiply the position by the matrix.
+        gl_Position = u_worldViewProjection * a_position;
+      
+        // orient the normals and pass to the fragment shader
+        v_normal = mat3(u_worldInverseTranspose) * a_normal;
+      
+        // compute the world position of the surfoace
+        vec3 surfaceWorldPosition = (u_world * a_position).xyz;
+      
+        // compute the vector of the surface to the light
+        // and pass it to the fragment shader
+        v_surfaceToLight = u_lightWorldPosition - surfaceWorldPosition;
+      
+        // compute the vector of the surface to the view/camera
+        // and pass it to the fragment shader
+        v_surfaceToView = normalize(u_viewWorldPosition - surfaceWorldPosition);
+      }
+    </script>
+  <!-- fragment shader -->
+  <script id="fragment-shader-3d" type="x-shader/x-fragment">
+      precision mediump float;
+      
+      // Passed in from the vertex shader.
+      varying vec3 v_normal;
+      varying vec3 v_surfaceToLight;
+      varying vec3 v_surfaceToView;
+      
+      uniform vec4 u_color;
+      uniform float u_shininess;
+      uniform vec3 u_lightColor;
+      uniform vec3 u_specularColor;
+      
+      void main() {
+        // because v_normal is a varying it's interpolated
+        // so it will not be a unit vector. Normalizing it
+        // will make it a unit vector again
+        vec3 normal = normalize(v_normal);
+      
+        vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
+        vec3 surfaceToViewDirection = normalize(v_surfaceToView);
+        vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
+      
+        float light = dot(normal, surfaceToLightDirection);
+        float specular = 5.0;
+        if (light > 0.0) {
+          specular = pow(dot(normal, halfVector), u_shininess);
+        }
+      
+        gl_FragColor = u_color;
+      
+        // Lets multiply just the color portion (not the alpha)
+        // by the light
+        gl_FragColor.rgb *= light * u_lightColor;
+      
+        // Just add in the specular
+        gl_FragColor.rgb += specular * u_specularColor;
+      }
+      </script>
+
+  <!-- vertex shader  -->
+  <!-- <script  id="vertex-shader-3d" type="x-shader/x-vertex">
+      attribute vec4 a_position;
+      attribute vec4 a_color;
+      
+      uniform mat4 u_matrix;
+      
+      varying vec4 v_color;
+      
+      void main() {
+        // Multiply the position by the matrix.
+        gl_Position = u_matrix * a_position;
+      
+        // Pass the color to the fragment shader.
+        v_color = a_color;
+      }
+    </script>
+    fragment shader -->
+  <!-- <script  id="fragment-shader-3d" type="x-shader/x-fragment">
+      precision mediump float;
+      
+      // Passed in from the vertex shader.
+      varying vec4 v_color;
+      
+      uniform vec4 u_colorMult;
+      
+      void main() {
+        gl_FragColor = v_color * u_colorMult;
+      }
+    </script> -->
+
+  <!--
+    for most samples webgl-utils only provides shader compiling/linking and
+    canvas resizing because why clutter the examples with code that's the same in every sample.
+    See https://webglfundamentals.org/webgl/lessons/webgl-boilerplate.html
+    and https://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
+    for webgl-utils, m3, m4, and webgl-lessons-ui.
+    -->
+  <script src="https://webglfundamentals.org/webgl/resources/webgl-utils.js"></script>
+  <script src="https://webglfundamentals.org/webgl/resources/webgl-lessons-ui.js"></script>
+  <script src="https://webglfundamentals.org/webgl/resources/m4.js"></script>
+  <script src="https://webglfundamentals.org/webgl/resources/chroma.min.js"></script>
+  <script src="./primitives.js"></script>
+  <script src="./index.js"></script>
+</body>
+
+</html>
