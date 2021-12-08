@@ -129,7 +129,7 @@
         vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
       
         float light = dot(normal, surfaceToLightDirection);
-        float specular = 5.0;
+        float specular = 0.0;
         if (light > 0.0) {
           specular = pow(dot(normal, halfVector), u_shininess);
         }
