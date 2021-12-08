@@ -1,14 +1,62 @@
 "use strict";
 
+var fs = [];
+var shapes = [];
+const CUBE_SHAPE = 0;
+const SPHERE_SHAPE = 1;
+const CONE_SHAPE = 2;
+var ID = 0;
+var currentSellection = 0;
+
 class MyFigure {
-  constructor(vertices, uniforms, translation, xRotation, yRotation, zRotation) {
-    this.vertices = vertices;
-    this.uniforms = uniforms;
-    this.translation = translation;
-    this.xRotation = xRotation;
-    this.yRotation = yRotation;
-    this.zRotation = zRotation;
+  constructor(shapeType) {
+    this.id = ID++;
+    this.type = shapeType;
+    this.vertices = shapes[shapeType];
+    this.uniforms = {
+      u_colorMult: [rand(0, 1), rand(0, 1), rand(0, 1), 1],
+      u_matrix: m4.identity()
+    };
+    this.translation = [rand(-100, 100), rand(-100, 100), rand(-150, 50)];
+    this.xRotation = rand(0.8, 1.2);
+    this.yRotation = rand(0.8, 1.2);
+    this.zRotation = rand(0.8, 1.2);
   }
+}
+
+function InsertFigures() {
+  var table = document.getElementById("figures");
+  table.innerHTML = "";
+  var tr = "";
+  fs.forEach(f => {
+    tr += '<tr onclick="selectFigure(this)">';
+    tr += '<td>' + f.type + '_' + f.id + '</td>'
+    tr += '</tr>'
+  })
+  table.innerHTML += tr;
+}
+
+function selectFigure(tr) {
+  var index = tr.rowIndex;
+  currentSellection = index;
+  console.log(fs[index].id);
+}
+
+function addFigure(shape) {
+  fs.push(new MyFigure(parseInt(shape)));
+  console.log("ADD " + shape);
+  InsertFigures()
+}
+
+function removeFigure(shape) {
+  var idtoremove = fs.findIndex(p => p.type === parseInt(shape));
+  if (idtoremove == -1) {
+    return;
+  }
+
+  fs.splice(idtoremove, 1);
+  console.log("REMOVED " + shape);
+  InsertFigures()
 }
 
 function main() {
@@ -25,11 +73,8 @@ function main() {
   var program = programInfo.program;
 
   //-------------------------------------------------
-  const CUBE_SHAPE = 0;
-  const CONE_SHAPE = 1;
-  const SPHERE_SHAPE = 2;
 
-  var cubeVertices = primitives.createCubeVertices(40);
+  var cubeVertices = primitives.createCubeVertices(20);
   cubeVertices = primitives.deindexVertices(cubeVertices);
   cubeVertices = primitives.makeRandomVertexColors(cubeVertices, {
     vertsPerColor: 6,
@@ -38,7 +83,7 @@ function main() {
     },
   });
 
-  var coneVertices = primitives.createTruncatedConeVertices(20, 0, 40, 12, 1, true, false);
+  var coneVertices = primitives.createTruncatedConeVertices(10, 0, 20, 12, 1, true, false);
   coneVertices = primitives.deindexVertices(coneVertices);
   coneVertices = primitives.makeRandomVertexColors(coneVertices, {
     vertsPerColor: 6,
@@ -56,32 +101,16 @@ function main() {
     },
   });
 
-  var shapes = [
+  shapes = [
     cubeVertices,
-    coneVertices,
     sphereVertices,
+    coneVertices,
   ];
 
-  var fs = [
-    new MyFigure(shapes[SPHERE_SHAPE], { u_colorMult: [0.2, 1, 0.2, 1], u_matrix: m4.identity() },
-      [70, 0, 0],
-      rand(0.8, 1.2),
-      rand(0.8, 1.2),
-      rand(0.8, 1.2)
-    ),
-    new MyFigure(shapes[CUBE_SHAPE], { u_colorMult: [1, 0.2, 0.2, 1], u_matrix: m4.identity() },
-      [0, 0, 0],
-      rand(0.8, 1.2),
-      rand(0.8, 1.2),
-      rand(0.8, 1.2)
-    ),
-    new MyFigure(shapes[CONE_SHAPE], { u_colorMult: [0.2, 0.2, 1, 1], u_matrix: m4.identity() },
-      [-70, 0, 0],
-      rand(0.8, 1.2),
-      rand(0.8, 1.2),
-      rand(0.8, 1.2)
-    ),
-  ]
+  fs.push(new MyFigure(SPHERE_SHAPE));
+  fs.push(new MyFigure(CUBE_SHAPE));
+  fs.push(new MyFigure(CONE_SHAPE));
+  InsertFigures()
 
   // lookup uniforms
   var worldViewProjectionLocation = gl.getUniformLocation(program, "u_worldViewProjection");
@@ -106,17 +135,6 @@ function main() {
   // Create buffers to put positions and normals in
   var positionBuffer = gl.createBuffer();
   var normalBuffer = gl.createBuffer();
-  // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
-  // gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  // Put geometry data into buffer
-  // setGeometry(gl, f.vertices);
-
-
-  // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = normalBuffer)
-  // gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-  // Put normals data into buffer
-  // setNormals(gl, f.vertices);
-
 
   function radToDeg(r) {
     return r * 180 / Math.PI;
@@ -179,7 +197,7 @@ function main() {
     var viewProjectionMatrix = m4.multiply(projectionMatrix, viewMatrix);
 
     // set the light position
-    gl.uniform3fv(lightWorldPositionLocation, [0, 0, 100]);
+    gl.uniform3fv(lightWorldPositionLocation, [0, 0, 50]);
     // set the camera/view position
     gl.uniform3fv(viewWorldPositionLocation, camera);
     // set the shininess
