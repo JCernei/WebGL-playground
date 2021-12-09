@@ -6,7 +6,13 @@ const CUBE_SHAPE = 0;
 const SPHERE_SHAPE = 1;
 const CONE_SHAPE = 2;
 var ID = 0;
-var currentSellection = 0;
+var currentSellection = -1;
+
+// UI
+var sliderRotateX;
+var sliderRotateY;
+var sliderRotateZ;
+
 
 class MyFigure {
   constructor(shapeType) {
@@ -18,13 +24,13 @@ class MyFigure {
       u_matrix: m4.identity()
     };
     this.translation = [rand(-100, 100), rand(-100, 100), rand(-150, 50)];
-    this.xRotation = rand(0.8, 1.2);
-    this.yRotation = rand(0.8, 1.2);
-    this.zRotation = rand(0.8, 1.2);
+    this.xRotation = rand(-180, 180);
+    this.yRotation = rand(-180, 180);
+    this.zRotation = rand(-180, 180);
   }
 }
 
-function InsertFigures() {
+function drawFiguresTable() {
   var table = document.getElementById("figures");
   table.innerHTML = "";
   var tr = "";
@@ -39,25 +45,56 @@ function InsertFigures() {
 function selectFigure(tr) {
   var index = tr.rowIndex;
   currentSellection = index;
-  console.log(fs[index].id);
+  var f = fs[index];
+  console.log(f.id);
+
+  // Refresh sliders
+  sliderRotateX.value = f.xRotation;
+  sliderRotateY.value = f.yRotation;
+  sliderRotateZ.value = f.zRotation;
+}
+
+function deselectFigure() {
+  currentSellection = -1;
 }
 
 function addFigure(shape) {
   fs.push(new MyFigure(parseInt(shape)));
   console.log("ADD " + shape);
-  InsertFigures()
+  drawFiguresTable()
 }
 
-function removeFigure(shape) {
-  var idtoremove = fs.findIndex(p => p.type === parseInt(shape));
-  if (idtoremove == -1) {
+function removeFigure() {
+  if (currentSellection == -1) {
     return;
   }
-
-  fs.splice(idtoremove, 1);
-  console.log("REMOVED " + shape);
-  InsertFigures()
+  fs.splice(currentSellection, 1);
+  currentSellection = -1;
+  console.log("REMOVED " + currentSellection);
+  drawFiguresTable()
 }
+
+function rotateX(value) {
+  if (currentSellection == -1)
+    return;
+  fs[currentSellection].xRotation = parseFloat(value);
+}
+function rotateY(value) {
+  if (currentSellection == -1)
+    return;
+  fs[currentSellection].yRotation = parseFloat(value);
+}
+function rotateZ(value) {
+  if (currentSellection == -1)
+    return;
+  fs[currentSellection].zRotation = parseFloat(value);
+}
+
+
+
+
+
+
 
 function main() {
   // Get A WebGL context
@@ -72,8 +109,7 @@ function main() {
   var programInfo = webglUtils.createProgramInfo(gl, ["vertex-shader-3d", "fragment-shader-3d"]);
   var program = programInfo.program;
 
-  //-------------------------------------------------
-
+  //------------------------------------------------- 
   var cubeVertices = primitives.createCubeVertices(20);
   cubeVertices = primitives.deindexVertices(cubeVertices);
   cubeVertices = primitives.makeRandomVertexColors(cubeVertices, {
@@ -110,7 +146,7 @@ function main() {
   fs.push(new MyFigure(SPHERE_SHAPE));
   fs.push(new MyFigure(CUBE_SHAPE));
   fs.push(new MyFigure(CONE_SHAPE));
-  InsertFigures()
+  drawFiguresTable()
 
   // lookup uniforms
   var worldViewProjectionLocation = gl.getUniformLocation(program, "u_worldViewProjection");
@@ -151,6 +187,10 @@ function main() {
   requestAnimationFrame(drawScene);
 
   // Setup a ui.
+  sliderRotateX = document.getElementById("sliderRotateX");
+  sliderRotateY = document.getElementById("sliderRotateY");
+  sliderRotateZ = document.getElementById("sliderRotateZ");
+
   webglLessonsUI.setupSlider("#fRotation", { value: radToDeg(fRotationRadians), slide: updateRotation, min: -360, max: 360 });
   webglLessonsUI.setupSlider("#shininess", { value: shininess, slide: updateShininess, min: 1, max: 300 });
 
@@ -227,14 +267,17 @@ function main() {
         f.translation[0],
         f.translation[1],
         f.translation[2]);
-      matrix = m4.xRotate(matrix, f.xRotation + time);
-      matrix = m4.yRotate(matrix, f.yRotation + time);
-      matrix = m4.zRotate(matrix, f.zRotation + time);
+      matrix = m4.xRotate(matrix, degToRad(f.xRotation));
+      matrix = m4.yRotate(matrix, degToRad(f.yRotation));
+      matrix = m4.zRotate(matrix, degToRad(f.zRotation));
       f.uniforms.u_matrix = matrix;
 
       var worldMatrix = f.uniforms.u_matrix; //m4.yRotation(fRotationRadians * time);
       // Set the color to use
-      gl.uniform4fv(colorLocation, f.uniforms.u_colorMult);
+      var fColor = [...f.uniforms.u_colorMult];
+      if (currentSellection != -1 && f.id == fs[currentSellection].id)
+        fColor[3] = 0.5;
+      gl.uniform4fv(colorLocation, fColor);
       // Multiply the matrices.
       var worldViewProjectionMatrix = m4.multiply(viewProjectionMatrix, worldMatrix);
       var worldInverseMatrix = m4.inverse(worldMatrix);

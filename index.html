@@ -30,11 +30,11 @@
     <div class="inline">
       <h3>Rotate</h3>
       X
-      <input type="range" id="sliderRotateX" min="-100" max="100" step="1" /><br>
+      <input type="range" id="sliderRotateX" min="-180" max="180" step="1" oninput="rotateX(this.value)" /><br>
       Y
-      <input type="range" id="sliderRotateY" min="-100" max="100" step="1" /><br>
+      <input type="range" id="sliderRotateY" min="-180" max="180" step="1" oninput="rotateY(this.value)" /><br>
       Z
-      <input type="range" id="sliderRotateZ" min="-100" max="100" step="1" /><br>
+      <input type="range" id="sliderRotateZ" min="-180" max="180" step="1" oninput="rotateZ(this.value)" /><br>
     </div>
 
 
@@ -73,7 +73,7 @@
       Far
       <input type="range" id="sliderCamFar" min="0" max="2000" step="1" value="2000" /><br>
     </div>
-    
+
     <table class="table table-hover">
       <tbody id="figures">
       </tbody>
