@@ -9,70 +9,77 @@
 </head>
 
 <body>
-  <canvas id="canvas"></canvas>
-  <div id="uiContainer">
-    <div id="ui">
-      <div id="fRotation"></div>
-      <div id="shininess"></div>
-    </div>
-  </div>
-  <div>
-    <button class="btn btn-primary" onclick="addFigure('0')">Add Cube</button>
-    <button class="btn btn-danger" onclick="removeFigure('0')">Remove Cube</button>
-  </div>
-  <div>
-    <button class="btn btn-primary" onclick="addFigure('1')">Add Sphere</button>
-    <button class="btn btn-danger" onclick="removeFigure('1')">Remove Sphere</button>
-  </div>
-  <div>
-    <button class="btn btn-primary" onclick="addFigure('2')">Add Cone</button>
-    <button class="btn btn-danger" onclick="removeFigure('2')">Remove Cone</button>
-  </div>
-
-  <div>
-    RotateX
-    <input type="range" id="sliderRotateX" min="-100" max="100" step="1" />
-    RotateY
-    <input type="range" id="sliderRotateY" min="-100" max="100" step="1" />
-    RotateZ
-    <input type="range" id="sliderRotateZ" min="-100" max="100" step="1" />
-  </div>
-
-  <div>
-    Scale
-    <input type="range" id="sliderScale" min="0" max="2" step="0.1" />
-    Move left-right
-    <input type="range" id="sliderX" min="-100" max="100" step="1" />
-    Move up-down
-    <input type="range" id="sliderY" min="-100" max="100" step="1" />
-    Move forward-backward
-    <input type="range" id="sliderZ" min="-100" max="100" step="1" />
-  </div>
-
-  <div>
-    CamX
-    <input type="range" id="sliderCamX" min="-100" max="100" step="1" />
-    CamY
-    <input type="range" id="sliderCamY" min="-100" max="100" step="1" />
-    CamZ
-    <input type="range" id="sliderCamZ" min="-100" max="100" step="1" value="100" />
-  </div>
-
-  <div>
-    FoV
-    <input type="range" id="sliderCamFov" min="0" max="180" step="1" value="60" />
-    Near
-    <input type="range" id="sliderCamNear" min="1" max="2000" step="1" value="1" />
-    Far
-    <input type="range" id="sliderCamFar" min="0" max="2000" step="1" value="2000" />
-  </div>
-
   <div class="container">
-    <table class="table">
+
+    <canvas id="canvas"></canvas>
+    <div id="uiContainer">
+      <div id="ui">
+        <div id="fRotation"></div>
+        <div id="shininess"></div>
+      </div>
+    </div>
+
+    <div>
+      <button class="btn btn-primary" onclick="addFigure('0')">Add Cube</button>
+      <button class="btn btn-primary" onclick="addFigure('1')">Add Sphere</button>
+      <button class="btn btn-primary" onclick="addFigure('2')">Add Cone</button>
+      <button class=" btn btn-danger" onclick="removeFigure()">Remove Selection</button>
+      <button class="btn btn-warning" onclick="deselectFigure()">Deselect</button>
+    </div>
+
+    <div class="inline">
+      <h3>Rotate</h3>
+      X
+      <input type="range" id="sliderRotateX" min="-100" max="100" step="1" /><br>
+      Y
+      <input type="range" id="sliderRotateY" min="-100" max="100" step="1" /><br>
+      Z
+      <input type="range" id="sliderRotateZ" min="-100" max="100" step="1" /><br>
+    </div>
+
+
+    <div class="inline">
+      <h3>Move</h3>
+      Left-Right
+      <input type="range" id="sliderX" min="-100" max="100" step="1" /><br>
+      Up-Down
+      <input type="range" id="sliderY" min="-100" max="100" step="1" /><br>
+      Forward-Backward
+      <input type="range" id="sliderZ" min="-100" max="100" step="1" /><br>
+    </div>
+
+    <div class="inline">
+      <h3>Scale</h3>
+      Scale
+      <input type="range" id="sliderScale" min="0" max="2" step="0.1" /><br>
+    </div>
+
+    <div class="inline">
+      <h3>Camera</h3>
+      X
+      <input type="range" id="sliderCamX" min="-100" max="100" step="1" /><br>
+      Y
+      <input type="range" id="sliderCamY" min="-100" max="100" step="1" /><br>
+      Z
+      <input type="range" id="sliderCamZ" min="-100" max="100" step="1" value="100" /><br>
+    </div>
+
+    <div class="inline">
+      <h3>View</h3>
+      FoV
+      <input type="range" id="sliderCamFov" min="0" max="180" step="1" value="60" /><br>
+      Near
+      <input type="range" id="sliderCamNear" min="1" max="2000" step="1" value="1" /><br>
+      Far
+      <input type="range" id="sliderCamFar" min="0" max="2000" step="1" value="2000" /><br>
+    </div>
+    
+    <table class="table table-hover">
       <tbody id="figures">
       </tbody>
     </table>
   </div>
+
   <!-- vertex shader -->
   <script id="vertex-shader-3d" type="x-shader/x-vertex">
       attribute vec4 a_position;

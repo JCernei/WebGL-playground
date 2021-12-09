@@ -2,15 +2,14 @@
 body {
   margin: 0;
 }
+
 canvas {
   width: 50vw;
   height: 50vh;
   display: block;
 }
 
-/* button{
-  width: 200px;
-  height: 100px;
-  display: inline-block;
-  font-size: 16px;
-} */
+.inline {
+  float:left;
+  margin: 5px 50px 5px 10px;
+}
