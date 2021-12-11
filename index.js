@@ -6,6 +6,7 @@ class MyCamera {
     this.fov = 60;
     this.near = 1;
     this.far = 2000;
+    this.ambientColor = [rand(0, 0.3), rand(0, 0.3), rand(0, 0.3)];
   }
 }
 
@@ -14,10 +15,7 @@ class MyFigure {
     this.id = ID++;
     this.type = shapeType;
     this.vertices = shapes[shapeType];
-    this.uniforms = {
-      u_colorMult: [rand(0, 1), rand(0, 1), rand(0, 1)],
-      u_matrix: m4.identity()
-    };
+    this.color = [rand(0, 1), rand(0, 1), rand(0, 1)];
     this.translation = [rand(-100, 100), rand(-50, 50), rand(-150, 50)];
     this.xRotation = rand(-180, 180);
     this.yRotation = rand(-180, 180);
@@ -66,6 +64,7 @@ var sliderCamZ;
 var sliderCamFov;
 var sliderCamNear;
 var sliderCamFar;
+var colorAmbient;
 var sliderLightShininess;
 var colorDiffuse;
 var colorSpecular;
@@ -116,7 +115,7 @@ function selectFigure(tr) {
   sliderRotateY.value = f.yRotation;
   sliderRotateZ.value = f.zRotation;
   sliderScale.value = f.scale;
-  colorFigure.value = rgbToHex(f.uniforms.u_colorMult);
+  colorFigure.value = rgbToHex(f.color);
   sliderMoveX.value = f.translation[0];
   sliderMoveY.value = f.translation[1];
   sliderMoveZ.value = f.translation[2];
@@ -165,7 +164,7 @@ function scale(value) {
 }
 function changeFigureColor(value) {
   if (currentFigure != -1)
-    fs[currentFigure].uniforms.u_colorMult = hexToRgb(value);
+    fs[currentFigure].color = hexToRgb(value);
 }
 function moveX(value) {
   if (currentFigure != -1)
@@ -203,10 +202,22 @@ function cameraNear(value) {
 function cameraFar(value) {
   camera.far = parseFloat(value);
 }
+function changeAmbientColor(value) {
+  camera.ambientColor = hexToRgb(value);
+}
 function lightShininess(value) {
   if (currentLight != -1)
     ls[currentLight].shininess = parseFloat(value);
 }
+function changeDiffuseColor(value) {
+  if (currentLight != -1)
+    ls[currentLight].diffuseColor = hexToRgb(value);
+}
+function changeSpecularColor(value) {
+  if (currentLight != -1)
+    ls[currentLight].specularColor = hexToRgb(value);
+}
+
 function hexToRgb(hex) {
   var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result ? [
@@ -217,14 +228,6 @@ function hexToRgb(hex) {
 }
 function rgbToHex(rgb) {
   return "#" + ((1 << 24) + (Math.round(rgb[0] * 256) << 16) + (Math.round(rgb[1] * 256) << 8) + Math.round(rgb[2] * 256)).toString(16).slice(1);
-}
-function changeDiffuseColor(value) {
-  if (currentLight != -1)
-    ls[currentLight].diffuseColor = hexToRgb(value);
-}
-function changeSpecularColor(value) {
-  if (currentLight != -1)
-    ls[currentLight].specularColor = hexToRgb(value);
 }
 
 function main() {
@@ -291,10 +294,12 @@ function main() {
     gl.getUniformLocation(program, "u_viewWorldPosition");
   var worldLocation =
     gl.getUniformLocation(program, "u_world");
-  var lightColorLocation =
-    gl.getUniformLocation(program, "u_lightColor");
+  var diffuseColorLocation =
+    gl.getUniformLocation(program, "u_diffuseColor");
   var specularColorLocation =
     gl.getUniformLocation(program, "u_specularColor");
+  var ambientColorLocation =
+    gl.getUniformLocation(program, "u_ambientColor");
 
   // look up where the vertex data needs to go.
   var positionLocation = gl.getAttribLocation(program, "a_position");
@@ -329,6 +334,7 @@ function main() {
   sliderCamFov = document.getElementById("sliderCamFov");
   sliderCamNear = document.getElementById("sliderCamNear");
   sliderCamFar = document.getElementById("sliderCamFar");
+  colorAmbient = document.getElementById("colorAmbient");
   sliderLightShininess = document.getElementById("sliderLightShininess");
   colorDiffuse = document.getElementById("colorDiffuse");
   colorSpecular = document.getElementById("colorSpecular");
@@ -339,6 +345,7 @@ function main() {
   sliderCamFov.value = camera.fov;
   sliderCamNear.value = camera.near;
   sliderCamFar.value = camera.far;
+  colorAmbient.value = rgbToHex(camera.ambientColor);
 
   // Draw the scene.
   function drawScene() {
@@ -374,9 +381,11 @@ function main() {
     // set the shininess
     gl.uniform1f(shininessLocation, ls[0].shininess);
     // set the light color
-    gl.uniform3fv(lightColorLocation, m4.normalize(ls[0].diffuseColor));  // red light
+    gl.uniform3fv(diffuseColorLocation, ls[0].diffuseColor);
     // set the specular color
-    gl.uniform3fv(specularColorLocation, m4.normalize(ls[0].specularColor));  // blue light
+    gl.uniform3fv(specularColorLocation, ls[0].specularColor);
+    // set the ambient color
+    gl.uniform3fv(ambientColorLocation, camera.ambientColor);
 
     for (var f of fs) {
       // Turn on the position attribute
@@ -402,11 +411,10 @@ function main() {
       matrix = m4.yRotate(matrix, degToRad(f.yRotation));
       matrix = m4.zRotate(matrix, degToRad(f.zRotation));
       matrix = m4.scale(matrix, f.scale, f.scale, f.scale);
-      f.uniforms.u_matrix = matrix;
 
-      var worldMatrix = f.uniforms.u_matrix;
+      var worldMatrix = matrix;
       // Set the color to use
-      var fColor = [...f.uniforms.u_colorMult, 1];
+      var fColor = [...f.color, 1];
       if (currentFigure != -1 && f.id == fs[currentFigure].id)
         fColor[3] = 0.5;
       gl.uniform4fv(colorLocation, fColor);
