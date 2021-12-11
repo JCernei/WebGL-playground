@@ -12,12 +12,6 @@
   <div class="container">
 
     <canvas id="canvas"></canvas>
-    <div id="uiContainer">
-      <div id="ui">
-        <div id="fRotation"></div>
-        <div id="shininess"></div>
-      </div>
-    </div>
 
     <div>
       <button class="btn btn-primary" onclick="addFigure('0')">Add Cube</button>
@@ -43,13 +37,13 @@
     <div class="inline">
       <h3>Move</h3>
       Left-Right
-      <input type="range" id="sliderMoveX" min="-100" max="100" step="1" oninput="moveX(this.value)"
+      <input type="range" id="sliderMoveX" min="-200" max="200" step="1" oninput="moveX(this.value)"
         list="sliderSnap" /><br />
       Down-Up
-      <input type="range" id="sliderMoveY" min="-100" max="100" step="1" oninput="moveY(this.value)"
+      <input type="range" id="sliderMoveY" min="-200" max="200" step="1" oninput="moveY(this.value)"
         list="sliderSnap" /><br />
       Backward-Forward
-      <input type="range" id="sliderMoveZ" min="-150" max="150" step="1" oninput="moveZ(this.value)"
+      <input type="range" id="sliderMoveZ" min="-400" max="400" step="1" oninput="moveZ(this.value)"
         list="sliderSnap" /><br />
     </div>
 
@@ -93,7 +87,7 @@
     <div class="inline">
       <h3>Light</h3>
       Shininess
-      <input type="range" id="sliderLightShininess" min="0" max="100" step="2" oninput="lightShininess(this.value)"
+      <input type="range" id="sliderLightShininess" min="1" max="100" step="2" oninput="lightShininess(this.value)"
         list="sliderSnap" /><br />
       Diffuse
       <input type="color" id="colorDiffuse" oninput="changeDiffuseColor(this.value)" /><br />
@@ -182,25 +176,12 @@
       
         vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
         vec3 surfaceToLightDirection2 = normalize(v_surfaceToLight2);
-        vec3 surfaceToViewDirection = normalize(v_surfaceToView);
-        vec3 halfVector = normalize(surfaceToLightDirection + surfaceToViewDirection);
-        vec3 halfVector2 = normalize(surfaceToLightDirection2 + surfaceToViewDirection);
       
-        float diffuse = dot(normal, surfaceToLightDirection);
-        float diffuse2 = dot(normal, surfaceToLightDirection2);
-        float specular = 0.0;
-        float specular2 = 0.0;
-        if (diffuse > 0.0) {
-          specular = pow(dot(normal, halfVector), u_shininess);
-        } else {
-          diffuse = 0.0;
-        }
-        if (diffuse2 > 0.0) {
-          specular2 = pow(dot(normal, halfVector2), u_shininess2);
-        } else {
-          diffuse2 = 0.0;
-        }
-      
+        float diffuse = max(dot(surfaceToLightDirection, normal), 0.0) / length(surfaceToLightDirection);
+        float diffuse2 = max(dot(surfaceToLightDirection2, normal), 0.0) / length(surfaceToLightDirection2);
+        float specular = pow(diffuse, u_shininess);
+        float specular2 = pow(diffuse2, u_shininess2);
+              
         gl_FragColor = u_color;
       
         // Lets multiply the color portion (not the alpha) by the light
