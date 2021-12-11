@@ -30,48 +30,72 @@
     <div class="inline">
       <h3>Rotate</h3>
       X
-      <input type="range" id="sliderRotateX" min="-180" max="180" step="1" oninput="rotateX(this.value)" /><br>
+      <input type="range" id="sliderRotateX" min="-180" max="180" step="1" oninput="rotateX(this.value)"
+        list="sliderSnap" /><br>
       Y
-      <input type="range" id="sliderRotateY" min="-180" max="180" step="1" oninput="rotateY(this.value)" /><br>
+      <input type="range" id="sliderRotateY" min="-180" max="180" step="1" oninput="rotateY(this.value)"
+        list="sliderSnap" /><br>
       Z
-      <input type="range" id="sliderRotateZ" min="-180" max="180" step="1" oninput="rotateZ(this.value)" /><br>
+      <input type="range" id="sliderRotateZ" min="-180" max="180" step="1" oninput="rotateZ(this.value)"
+        list="sliderSnap" /><br>
     </div>
 
     <div class="inline">
       <h3>Move</h3>
       Left-Right
-      <input type="range" id="sliderX" min="-100" max="100" step="1" /><br>
+      <input type="range" id="sliderMoveX" min="-100" max="100" step="1" oninput="moveX(this.value)"
+        list="sliderSnap" /><br>
       Up-Down
-      <input type="range" id="sliderY" min="-100" max="100" step="1" /><br>
+      <input type="range" id="sliderMoveY" min="-100" max="100" step="1" oninput="moveY(this.value)"
+        list="sliderSnap" /><br>
       Forward-Backward
-      <input type="range" id="sliderZ" min="-100" max="100" step="1" /><br>
+      <input type="range" id="sliderMoveZ" min="-150" max="150" step="1" oninput="moveZ(this.value)"
+        list="sliderSnap" /><br>
     </div>
 
     <div class="inline">
       <h3>Scale</h3>
       Scale
-      <input type="range" id="sliderScale" min="0" max="2" step="0.1" /><br>
+      <input type="range" id="sliderScale" min="0" max="2" step="0.1" oninput="scale(this.value)"
+        list="sliderSnap" /><br>
     </div>
 
     <div class="inline">
       <h3>Camera</h3>
       X
-      <input type="range" id="sliderCamX" min="-100" max="100" step="1" /><br>
+      <input type="range" id="sliderCamX" min="-100" max="100" step="1" oninput="cameraX(this.value)"
+        list="sliderSnap" /><br>
       Y
-      <input type="range" id="sliderCamY" min="-100" max="100" step="1" /><br>
+      <input type="range" id="sliderCamY" min="-100" max="100" step="1" oninput="cameraY(this.value)"
+        list="sliderSnap" /><br>
       Z
-      <input type="range" id="sliderCamZ" min="-100" max="100" step="1" value="100" /><br>
+      <input type="range" id="sliderCamZ" min="-100" max="100" step="1" oninput="cameraZ(this.value)"
+        list="sliderSnap" /><br>
     </div>
 
     <div class="inline">
       <h3>View</h3>
       FoV
-      <input type="range" id="sliderCamFov" min="0" max="180" step="1" value="60" /><br>
+      <input type="range" id="sliderCamFov" min="0" max="180" step="1" oninput="cameraFov(this.value)"
+        list="sliderSnap" /><br>
       Near
-      <input type="range" id="sliderCamNear" min="1" max="2000" step="1" value="1" /><br>
+      <input type="range" id="sliderCamNear" min="0" max="2000" step="1" oninput="cameraNear(this.value)"
+        list="sliderSnap" /><br>
       Far
-      <input type="range" id="sliderCamFar" min="0" max="2000" step="1" value="2000" /><br>
+      <input type="range" id="sliderCamFar" min="0" max="2000" step="1" oninput="cameraFar(this.value)"
+        list="sliderSnap" /><br>
     </div>
+
+    <div class="inline">
+      <h3>Light</h3>
+      Shininess
+      <input type="range" id="sliderLightShininess" min="0" max="100" step="2" oninput="lightShininess(this.value)"
+        list="sliderSnap" /><br>
+    </div>
+
+    <datalist id="sliderSnap">
+      <option value="0">
+    </datalist>
 
     <div class="inline">
       <h3>List of figures</h3>

@@ -1,18 +1,13 @@
 "use strict";
 
-var fs = [];
-var shapes = [];
-const CUBE_SHAPE = 0;
-const SPHERE_SHAPE = 1;
-const CONE_SHAPE = 2;
-var ID = 0;
-var currentSellection = -1;
-
-// UI
-var sliderRotateX;
-var sliderRotateY;
-var sliderRotateZ;
-
+class MyCamera {
+  constructor() {
+    this.translation = [0, 0, 100];
+    this.fov = 60;
+    this.near = 1;
+    this.far = 2000;
+  }
+}
 
 class MyFigure {
   constructor(shapeType) {
@@ -23,28 +18,89 @@ class MyFigure {
       u_colorMult: [rand(0, 1), rand(0, 1), rand(0, 1), 1],
       u_matrix: m4.identity()
     };
-    this.translation = [rand(-100, 100), rand(-100, 100), rand(-150, 50)];
+    this.translation = [rand(-100, 100), rand(-50, 50), rand(-150, 50)];
     this.xRotation = rand(-180, 180);
     this.yRotation = rand(-180, 180);
     this.zRotation = rand(-180, 180);
+    this.scale = 1;
   }
 }
+
+class MyLight {
+  constructor() {
+    this.id = ID++;
+    this.shininess = 100;
+    this.translation = [rand(-100, 100), rand(-100, 100), rand(0, 150)];
+  }
+}
+
+var fs = [];
+var ls = [];
+var camera = new MyCamera();
+var shapes = [];
+const CUBE_SHAPE = 0;
+const SPHERE_SHAPE = 1;
+const CONE_SHAPE = 2;
+var shapeNames = {};
+shapeNames[CUBE_SHAPE] = "Cube";
+shapeNames[SPHERE_SHAPE] = "Sphere";
+shapeNames[CONE_SHAPE] = "Cone";
+var ID = 0;
+var currentFigure = -1;
+var currentLight = -1;
+
+// UI
+var sliderRotateX;
+var sliderRotateY;
+var sliderRotateZ;
+var sliderScale;
+var sliderMoveX;
+var sliderMoveY;
+var sliderMoveZ;
+var sliderCamX;
+var sliderCamY;
+var sliderCamZ;
+var sliderCamFov;
+var sliderCamNear;
+var sliderCamFar;
+var sliderLightShininess;
+
 
 function drawFiguresTable() {
   var table = document.getElementById("figures");
   table.innerHTML = "";
   var tr = "";
+  ls.forEach(l => {
+    tr += '<tr onclick="selectLight(this)">';
+    tr += '<td>Light ' + l.id + '</td>'
+    tr += '</tr>'
+  })
   fs.forEach(f => {
     tr += '<tr onclick="selectFigure(this)">';
-    tr += '<td>' + f.type + '_' + f.id + '</td>'
+    tr += '<td>' + shapeNames[f.type] + ' ' + f.id + '</td>'
     tr += '</tr>'
   })
   table.innerHTML += tr;
 }
 
-function selectFigure(tr) {
+function selectLight(tr) {
   var index = tr.rowIndex;
-  currentSellection = index;
+  currentLight = index;
+  currentFigure = -1;
+  var l = ls[index];
+  console.log(l.id);
+
+  // Refresh sliders
+  sliderMoveX.value = l.translation[0];
+  sliderMoveY.value = l.translation[1];
+  sliderMoveZ.value = l.translation[2];
+  sliderLightShininess.value = l.shininess;
+}
+
+function selectFigure(tr) {
+  var index = tr.rowIndex - ls.length;
+  currentFigure = index;
+  currentLight = -1;
   var f = fs[index];
   console.log(f.id);
 
@@ -52,10 +108,15 @@ function selectFigure(tr) {
   sliderRotateX.value = f.xRotation;
   sliderRotateY.value = f.yRotation;
   sliderRotateZ.value = f.zRotation;
+  sliderScale.value = f.scale;
+  sliderMoveX.value = f.translation[0];
+  sliderMoveY.value = f.translation[1];
+  sliderMoveZ.value = f.translation[2];
 }
 
 function deselectFigure() {
-  currentSellection = -1;
+  currentFigure = -1;
+  currentLight = -1;
 }
 
 function addFigure(shape) {
@@ -65,31 +126,75 @@ function addFigure(shape) {
 }
 
 function removeFigure() {
-  if (currentSellection == -1) {
+  if (currentFigure == -1) {
     return;
   }
-  fs.splice(currentSellection, 1);
-  currentSellection = -1;
-  console.log("REMOVED " + currentSellection);
+  fs.splice(currentFigure, 1);
+  currentFigure = -1;
+  console.log("REMOVED " + currentFigure);
   drawFiguresTable()
 }
 
 function rotateX(value) {
-  if (currentSellection == -1)
+  if (currentFigure == -1)
     return;
-  fs[currentSellection].xRotation = parseFloat(value);
+  fs[currentFigure].xRotation = parseFloat(value);
 }
 function rotateY(value) {
-  if (currentSellection == -1)
+  if (currentFigure == -1)
     return;
-  fs[currentSellection].yRotation = parseFloat(value);
+  fs[currentFigure].yRotation = parseFloat(value);
 }
 function rotateZ(value) {
-  if (currentSellection == -1)
+  if (currentFigure == -1)
     return;
-  fs[currentSellection].zRotation = parseFloat(value);
+  fs[currentFigure].zRotation = parseFloat(value);
 }
-
+function scale(value) {
+  if (currentFigure == -1)
+    return;
+  fs[currentFigure].scale = parseFloat(value);
+}
+function moveX(value) {
+  if (currentFigure != -1)
+    fs[currentFigure].translation[0] = parseFloat(value);
+  if (currentLight != -1)
+    ls[currentLight].translation[0] = parseFloat(value);
+}
+function moveY(value) {
+  if (currentFigure != -1)
+    fs[currentFigure].translation[1] = parseFloat(value);
+  if (currentLight != -1)
+    ls[currentLight].translation[1] = parseFloat(value);
+}
+function moveZ(value) {
+  if (currentFigure != -1)
+    fs[currentFigure].translation[2] = parseFloat(value);
+  if (currentLight != -1)
+    ls[currentLight].translation[2] = parseFloat(value);
+}
+function cameraX(value) {
+  camera.translation[0] = parseFloat(value);
+}
+function cameraY(value) {
+  camera.translation[1] = parseFloat(value);
+}
+function cameraZ(value) {
+  camera.translation[2] = parseFloat(value);
+}
+function cameraFov(value) {
+  camera.fov = parseFloat(value);
+}
+function cameraNear(value) {
+  camera.near = parseFloat(value);
+}
+function cameraFar(value) {
+  camera.far = parseFloat(value);
+}
+function lightShininess(value) {
+  if (currentLight != -1)
+    ls[currentLight].shininess = parseFloat(value);
+}
 
 function main() {
   // Get A WebGL context
@@ -138,6 +243,7 @@ function main() {
     coneVertices,
   ];
 
+  ls.push(new MyLight());
   fs.push(new MyFigure(SPHERE_SHAPE));
   fs.push(new MyFigure(CUBE_SHAPE));
   fs.push(new MyFigure(CONE_SHAPE));
@@ -175,30 +281,30 @@ function main() {
     return d * Math.PI / 180;
   }
 
-  var fieldOfViewRadians = degToRad(60);
-  var fRotationRadians = 0;
-  var shininess = 150;
-
   requestAnimationFrame(drawScene);
 
   // Setup a ui.
   sliderRotateX = document.getElementById("sliderRotateX");
   sliderRotateY = document.getElementById("sliderRotateY");
   sliderRotateZ = document.getElementById("sliderRotateZ");
+  sliderScale = document.getElementById("sliderScale");
+  sliderMoveX = document.getElementById("sliderMoveX");
+  sliderMoveY = document.getElementById("sliderMoveY");
+  sliderMoveZ = document.getElementById("sliderMoveZ");
+  sliderCamX = document.getElementById("sliderCamX");
+  sliderCamY = document.getElementById("sliderCamY");
+  sliderCamZ = document.getElementById("sliderCamZ");
+  sliderCamFov = document.getElementById("sliderCamFov");
+  sliderCamNear = document.getElementById("sliderCamNear");
+  sliderCamFar = document.getElementById("sliderCamFar");
+  sliderLightShininess = document.getElementById("sliderLightShininess");
 
-  webglLessonsUI.setupSlider("#fRotation", { value: radToDeg(fRotationRadians), slide: updateRotation, min: -360, max: 360 });
-  webglLessonsUI.setupSlider("#shininess", { value: shininess, slide: updateShininess, min: 1, max: 300 });
-
-  function updateRotation(event, ui) {
-    fRotationRadians = degToRad(ui.value);
-    // drawScene();
-  }
-
-  function updateShininess(event, ui) {
-    shininess = ui.value;
-    // drawScene();
-  }
-  console.log(fs)
+  sliderCamX.value = camera.translation[0];
+  sliderCamY.value = camera.translation[1];
+  sliderCamZ.value = camera.translation[2];
+  sliderCamFov.value = camera.fov;
+  sliderCamNear.value = camera.near;
+  sliderCamFar.value = camera.far;
 
   // Draw the scene.
   function drawScene(time) {
@@ -218,25 +324,22 @@ function main() {
 
     // Compute the projection matrix
     var aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-    var zNear = 1;
-    var zFar = 2000;
-    var projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
+    var projectionMatrix = m4.perspective(degToRad(camera.fov), aspect, camera.near, camera.far);
     // Compute the camera's matrix
-    var camera = [0, 0, 100];
     var target = [0, 0, 0];
     var up = [0, 1, 0];
-    var cameraMatrix = m4.lookAt(camera, target, up);
+    var cameraMatrix = m4.lookAt(camera.translation, target, up);
     // Make a view matrix from the camera matrix.
     var viewMatrix = m4.inverse(cameraMatrix);
     // Compute a view projection matrix
     var viewProjectionMatrix = m4.multiply(projectionMatrix, viewMatrix);
 
     // set the light position
-    gl.uniform3fv(lightWorldPositionLocation, [0, 0, 50]);
+    gl.uniform3fv(lightWorldPositionLocation, ls[0].translation);
     // set the camera/view position
-    gl.uniform3fv(viewWorldPositionLocation, camera);
+    gl.uniform3fv(viewWorldPositionLocation, camera.translation);
     // set the shininess
-    gl.uniform1f(shininessLocation, shininess);
+    gl.uniform1f(shininessLocation, ls[0].shininess);
     // set the light color
     gl.uniform3fv(lightColorLocation, m4.normalize([1, 1, 1]));  // red light
     // set the specular color
@@ -257,7 +360,7 @@ function main() {
       setNormals(gl, f.vertices);
       gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, 0, 0);
 
-      // Draw
+      // Compute Matrix
       var matrix = m4.translate(m4.identity(),
         f.translation[0],
         f.translation[1],
@@ -265,12 +368,13 @@ function main() {
       matrix = m4.xRotate(matrix, degToRad(f.xRotation));
       matrix = m4.yRotate(matrix, degToRad(f.yRotation));
       matrix = m4.zRotate(matrix, degToRad(f.zRotation));
+      matrix = m4.scale(matrix, f.scale, f.scale, f.scale);
       f.uniforms.u_matrix = matrix;
 
-      var worldMatrix = f.uniforms.u_matrix; //m4.yRotation(fRotationRadians * time);
+      var worldMatrix = f.uniforms.u_matrix;
       // Set the color to use
       var fColor = [...f.uniforms.u_colorMult];
-      if (currentSellection != -1 && f.id == fs[currentSellection].id)
+      if (currentFigure != -1 && f.id == fs[currentFigure].id)
         fColor[3] = 0.5;
       gl.uniform4fv(colorLocation, fColor);
       // Multiply the matrices.
