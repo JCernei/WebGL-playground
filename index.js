@@ -91,11 +91,6 @@ function rotateZ(value) {
 }
 
 
-
-
-
-
-
 function main() {
   // Get A WebGL context
   /** @type {HTMLCanvasElement} */
