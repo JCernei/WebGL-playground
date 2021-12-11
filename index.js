@@ -278,6 +278,7 @@ function main() {
   ];
 
   ls.push(new MyLight());
+  ls.push(new MyLight());
   fs.push(new MyFigure(SPHERE_SHAPE));
   fs.push(new MyFigure(CUBE_SHAPE));
   fs.push(new MyFigure(CONE_SHAPE));
@@ -288,16 +289,23 @@ function main() {
   var worldInverseTransposeLocation = gl.getUniformLocation(program, "u_worldInverseTranspose");
   var colorLocation = gl.getUniformLocation(program, "u_color");
   var shininessLocation = gl.getUniformLocation(program, "u_shininess");
+  var shininessLocation2 = gl.getUniformLocation(program, "u_shininess2");
   var lightWorldPositionLocation =
     gl.getUniformLocation(program, "u_lightWorldPosition");
+  var lightWorldPositionLocation2 =
+    gl.getUniformLocation(program, "u_lightWorldPosition2");
   var viewWorldPositionLocation =
     gl.getUniformLocation(program, "u_viewWorldPosition");
   var worldLocation =
     gl.getUniformLocation(program, "u_world");
   var diffuseColorLocation =
     gl.getUniformLocation(program, "u_diffuseColor");
+  var diffuseColorLocation2 =
+    gl.getUniformLocation(program, "u_diffuseColor2");
   var specularColorLocation =
     gl.getUniformLocation(program, "u_specularColor");
+  var specularColorLocation2 =
+    gl.getUniformLocation(program, "u_specularColor2");
   var ambientColorLocation =
     gl.getUniformLocation(program, "u_ambientColor");
 
@@ -376,14 +384,18 @@ function main() {
 
     // set the light position
     gl.uniform3fv(lightWorldPositionLocation, ls[0].translation);
+    gl.uniform3fv(lightWorldPositionLocation2, ls[1].translation);
     // set the camera/view position
     gl.uniform3fv(viewWorldPositionLocation, camera.translation);
     // set the shininess
     gl.uniform1f(shininessLocation, ls[0].shininess);
+    gl.uniform1f(shininessLocation2, ls[1].shininess);
     // set the light color
     gl.uniform3fv(diffuseColorLocation, ls[0].diffuseColor);
+    gl.uniform3fv(diffuseColorLocation2, ls[1].diffuseColor);
     // set the specular color
     gl.uniform3fv(specularColorLocation, ls[0].specularColor);
+    gl.uniform3fv(specularColorLocation2, ls[1].specularColor);
     // set the ambient color
     gl.uniform3fv(ambientColorLocation, camera.ambientColor);
 
