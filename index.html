@@ -14,9 +14,13 @@
     <canvas id="canvas"></canvas>
 
     <div>
-      <button class="btn btn-primary" onclick="addFigure('0')">Add Cube</button>
-      <button class="btn btn-primary" onclick="addFigure('1')">Add Sphere</button>
-      <button class="btn btn-primary" onclick="addFigure('2')">Add Cone</button>
+      <button class="btn btn-primary" onclick="addFigure('Cube')">Add Cube</button>
+      <button class="btn btn-primary" onclick="addFigure('Sphere')">Add Sphere</button>
+      <button class="btn btn-primary" onclick="addFigure('Cone')">Add Cone</button>
+      <input type="url" id="urlObj" required>
+      <button class="btn btn-primary" onclick="addUrlObj()">Obj from URL</button>
+      <input type="file" id="fileObj" onchange="addFileObj(event)" />
+      <br />
       <button class="btn btn-warning" onclick="deselectFigure()">Deselect</button>
       <button class=" btn btn-danger" onclick="removeFigure()">Remove</button>
     </div>
@@ -54,6 +58,9 @@
         list="sliderSnap" /><br />
       Color
       <input type="color" id="colorFigure" oninput="changeFigureColor(this.value)" /><br />
+      <input type="url" id="urlTexture" required>
+      <button class="btn btn-primary" onclick="addUrlTexture()">Texture from URL</button><br />
+      <input type="file" id="fileTexture" onchange="addFileTexture(event)" />
     </div>
 
     <div class="inline">
@@ -112,6 +119,7 @@
   <script id="vertex-shader-3d" type="x-shader/x-vertex">
       attribute vec4 a_position;
       attribute vec3 a_normal;
+      attribute vec2 a_texcoord;
       
       uniform vec3 u_lightWorldPosition;
       uniform vec3 u_lightWorldPosition2;
@@ -126,6 +134,7 @@
       varying vec3 v_surfaceToLight;
       varying vec3 v_surfaceToLight2;
       varying vec3 v_surfaceToView;
+      varying vec2 v_texcoord;
       
       uniform mat4 u_matrix;
 
@@ -147,8 +156,11 @@
         // compute the vector of the surface to the view/camera
         // and pass it to the fragment shader
         v_surfaceToView = normalize(u_viewWorldPosition - surfaceWorldPosition);
+
+        // Pass the texcoord to the fragment shader.
+        v_texcoord = a_texcoord;
       }
-    </script>
+  </script>
   <!-- fragment shader -->
   <script id="fragment-shader-3d" type="x-shader/x-fragment">
       precision mediump float;
@@ -158,6 +170,7 @@
       varying vec3 v_surfaceToLight;
       varying vec3 v_surfaceToLight2;
       varying vec3 v_surfaceToView;
+      varying vec2 v_texcoord;
       
       uniform vec4 u_color;
       uniform float u_shininess;
@@ -167,6 +180,10 @@
       uniform vec3 u_specularColor;
       uniform vec3 u_specularColor2;
       uniform vec3 u_ambientColor;
+      // The texture.
+      uniform sampler2D u_texture;
+      uniform bool u_hastexture;
+      uniform bool u_isSelected;
       
       void main() {
         // because v_normal is a varying it's interpolated
@@ -182,51 +199,20 @@
         float specular = pow(diffuse, u_shininess);
         float specular2 = pow(diffuse2, u_shininess2);
               
-        gl_FragColor = u_color;
+        if (u_hastexture) {
+          gl_FragColor = texture2D(u_texture, v_texcoord);
+        } else {
+          gl_FragColor = u_color;
+        }
       
         // Lets multiply the color portion (not the alpha) by the light
         gl_FragColor.rgb *= (diffuse * u_diffuseColor + specular * u_specularColor + diffuse2 * u_diffuseColor2 + specular2 * u_specularColor2 + u_ambientColor);
-      }
-      </script>
 
-  <!-- vertex shader  -->
-  <!-- <script  id="vertex-shader-3d" type="x-shader/x-vertex">
-      attribute vec4 a_position;
-      attribute vec4 a_color;
-      
-      uniform mat4 u_matrix;
-      
-      varying vec4 v_color;
-      
-      void main() {
-        // Multiply the position by the matrix.
-        gl_Position = u_matrix * a_position;
-      
-        // Pass the color to the fragment shader.
-        v_color = a_color;
+        if (u_isSelected) {
+          gl_FragColor.a = 0.6;
+        }
       }
-    </script>
-    fragment shader -->
-  <!-- <script  id="fragment-shader-3d" type="x-shader/x-fragment">
-      precision mediump float;
-      
-      // Passed in from the vertex shader.
-      varying vec4 v_color;
-      
-      uniform vec4 u_colorMult;
-      
-      void main() {
-        gl_FragColor = v_color * u_colorMult;
-      }
-    </script> -->
-
-  <!--
-    for most samples webgl-utils only provides shader compiling/linking and
-    canvas resizing because why clutter the examples with code that's the same in every sample.
-    See https://webglfundamentals.org/webgl/lessons/webgl-boilerplate.html
-    and https://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
-    for webgl-utils, m3, m4, and webgl-lessons-ui.
-    -->
+  </script>
   <script src="./webglUtils.js"></script>
   <script src="https://webglfundamentals.org/webgl/resources/webgl-lessons-ui.js"></script>
   <script src="https://webglfundamentals.org/webgl/resources/m4.js"></script>

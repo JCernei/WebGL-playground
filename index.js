@@ -11,16 +11,19 @@ class MyCamera {
 }
 
 class MyFigure {
-  constructor(shapeType) {
+  constructor(vertices, name) {
     this.id = ID++;
-    this.type = shapeType;
-    this.vertices = shapes[shapeType];
+    this.name = name;
+    this.vertices = vertices;
     this.color = [rand(0, 1), rand(0, 1), rand(0, 1)];
     this.translation = [rand(-100, 100), rand(-50, 50), rand(-150, 50)];
     this.xRotation = rand(-180, 180);
     this.yRotation = rand(-180, 180);
     this.zRotation = rand(-180, 180);
     this.scale = 1;
+    this.hasTexture = false;
+    this.image = new Image();
+    this.texMagic = 2;
   }
 }
 
@@ -37,16 +40,7 @@ class MyLight {
 var fs = [];
 var ls = [];
 var camera = new MyCamera();
-var shapes = [];
-const CUBE_SHAPE = 0;
-const SPHERE_SHAPE = 1;
-const CONE_SHAPE = 2;
-const OBJ_SHAPE = 3;
-var shapeNames = {};
-shapeNames[CUBE_SHAPE] = "Cube";
-shapeNames[SPHERE_SHAPE] = "Sphere";
-shapeNames[CONE_SHAPE] = "Cone";
-shapeNames[OBJ_SHAPE] = "OBJ";
+var shapes = {};
 var ID = 0;
 var currentFigure = -1;
 var currentLight = -1;
@@ -83,19 +77,17 @@ function drawFiguresTable() {
   })
   fs.forEach(f => {
     tr += '<tr onclick="selectFigure(this)">';
-    tr += '<td>' + shapeNames[f.type] + ' ' + f.id + '</td>'
+    tr += '<td>' + f.name + ' ' + f.id + '</td>'
     tr += '</tr>'
   })
   table.innerHTML += tr;
 }
-
 function selectLight(tr) {
   var index = tr.rowIndex;
   currentLight = index;
   currentFigure = -1;
   var l = ls[index];
   console.log(l.id);
-
   // Refresh sliders
   sliderMoveX.value = l.translation[0];
   sliderMoveY.value = l.translation[1];
@@ -104,14 +96,12 @@ function selectLight(tr) {
   colorDiffuse.value = rgbToHex(l.diffuseColor);
   colorSpecular.value = rgbToHex(l.specularColor);
 }
-
 function selectFigure(tr) {
   var index = tr.rowIndex - ls.length;
   currentFigure = index;
   currentLight = -1;
   var f = fs[index];
   console.log(f.id);
-
   // Refresh sliders
   sliderRotateX.value = f.xRotation;
   sliderRotateY.value = f.yRotation;
@@ -122,18 +112,47 @@ function selectFigure(tr) {
   sliderMoveY.value = f.translation[1];
   sliderMoveZ.value = f.translation[2];
 }
-
+function addFigure(shape) {
+  fs.push(new MyFigure(shapes[shape], shape));
+  console.log("ADD " + shape);
+  drawFiguresTable()
+}
+async function addUrlObj() {
+  // https://gist.githubusercontent.com/JCernei/0e1831604aecbc121750446559596b04/raw/14ac2e0ff691e1f886b8066295274d2e0a613655/dragon.obj
+  // https://webglfundamentals.org/webgl/resources/models/cube/cube.obj
+  var url = document.getElementById("urlObj").value;
+  if (!(url in shapes)) {
+    const response = await fetch(url);
+    const text = await response.text();
+    var data = parseOBJ(text);
+    data.position.numElements = webglUtils.getNumElementsFromNonIndexedArrays(data);
+    shapes[url] = data;
+    console.log(data);
+  }
+  var f = new MyFigure(shapes[url], "OBJ");
+  // f.texMagic = 3;
+  fs.push(f);
+  console.log("ADD OBJ");
+  drawFiguresTable()
+}
+async function addFileObj(event) {
+  const file = event.target.files[0];
+  if (!(file.name in shapes)) {
+    const text = await new Response(file).text()
+    var data = parseOBJ(text);
+    data.position.numElements = webglUtils.getNumElementsFromNonIndexedArrays(data);
+    shapes[file.name] = data;
+    console.log(data);
+  }
+  var f = new MyFigure(shapes[file.name], "OBJ");
+  fs.push(f);
+  console.log("ADD OBJ");
+  drawFiguresTable()
+}
 function deselectFigure() {
   currentFigure = -1;
   currentLight = -1;
 }
-
-function addFigure(shape) {
-  fs.push(new MyFigure(parseInt(shape)));
-  console.log("ADD " + shape);
-  drawFiguresTable()
-}
-
 function removeFigure() {
   if (currentFigure == -1) {
     return;
@@ -143,7 +162,6 @@ function removeFigure() {
   console.log("REMOVED " + currentFigure);
   drawFiguresTable()
 }
-
 function rotateX(value) {
   if (currentFigure == -1)
     return;
@@ -167,6 +185,30 @@ function scale(value) {
 function changeFigureColor(value) {
   if (currentFigure != -1)
     fs[currentFigure].color = hexToRgb(value);
+}
+async function addUrlTexture() {
+  // https://i.imgur.com/etWLx6y.jpg
+  if (currentFigure == -1)
+    return;
+  var url = document.getElementById("urlTexture").value;
+  var image = new Image();
+  image.crossOrigin = "";
+  image.src = url;
+  await image.decode();
+
+  fs[currentFigure].image = image;
+  fs[currentFigure].hasTexture = true;
+}
+async function addFileTexture(event) {
+  if (currentFigure == -1)
+    return;
+  const file = event.target.files[0];
+  const blob = await new Response(file).blob()
+  var image = new Image();
+  image.src = URL.createObjectURL(blob);;
+  await image.decode();
+  fs[currentFigure].image = image;
+  fs[currentFigure].hasTexture = true;
 }
 function moveX(value) {
   if (currentFigure != -1)
@@ -252,15 +294,6 @@ function parseOBJ(text) {
     [],   // normals
   ];
 
-  function newGeometry() {
-    // If there is an existing geometry and it's
-    // not empty then start a new one.
-    if (geometry && geometry.data.position.length) {
-      geometry = undefined;
-    }
-    setGeometry();
-  }
-
   function addVertex(vert) {
     const ptn = vert.split('/');
     ptn.forEach((objIndexStr, i) => {
@@ -282,7 +315,8 @@ function parseOBJ(text) {
     },
     vt(parts) {
       // should check for missing v and extra w?
-      objTexcoords.push(parts.map(parseFloat));
+      var arr = parts.map(parseFloat);
+      objTexcoords.push([arr[0], arr[1]]);
     },
     f(parts) {
       const numTriangles = parts.length - 2;
@@ -330,11 +364,6 @@ async function main() {
   if (!gl) {
     return;
   }
-  const response = await fetch('https://gist.githubusercontent.com/JCernei/0e1831604aecbc121750446559596b04/raw/14ac2e0ff691e1f886b8066295274d2e0a613655/dragon.obj'); // https://webglfundamentals.org/webgl/resources/models/cube/cube.obj
-  const text = await response.text();
-  var data = parseOBJ(text);
-  const bufferInfo = webglUtils.createBufferInfoFromArrays(gl, data);
-
   // setup GLSL program
   var programInfo = webglUtils.createProgramInfo(gl, ["vertex-shader-3d", "fragment-shader-3d"]);
   var program = programInfo.program;
@@ -367,29 +396,19 @@ async function main() {
     },
   });
 
-  // data.normal = cubeVertices.normal;
-  // data.position = cubeVertices.position;
-  data.position = data.position.map(function (x) { return x * 10; });
-  data.position.numElements = webglUtils.getNumElementsFromNonIndexedArrays(data);
-
-  shapes = [
-    cubeVertices,
-    sphereVertices,
-    coneVertices,
-    data
-  ];
+  shapes["Cube"] = cubeVertices;
+  shapes["Sphere"] = sphereVertices;
+  shapes["Cone"] = coneVertices;
 
   console.log("------------------------------------");
   console.log(cubeVertices);
-  console.log(data);
-  // console.log(bufferInfo);
+  console.log(sphereVertices);
 
   ls.push(new MyLight());
   ls.push(new MyLight());
-  fs.push(new MyFigure(SPHERE_SHAPE));
-  fs.push(new MyFigure(CUBE_SHAPE));
-  fs.push(new MyFigure(CONE_SHAPE));
-  fs.push(new MyFigure(OBJ_SHAPE));
+  fs.push(new MyFigure(sphereVertices, "Sphere"));
+  fs.push(new MyFigure(cubeVertices, "Cube"));
+  fs.push(new MyFigure(coneVertices, "Cone"));
   drawFiguresTable()
 
   // lookup uniforms
@@ -398,32 +417,40 @@ async function main() {
   var colorLocation = gl.getUniformLocation(program, "u_color");
   var shininessLocation = gl.getUniformLocation(program, "u_shininess");
   var shininessLocation2 = gl.getUniformLocation(program, "u_shininess2");
-  var lightWorldPositionLocation =
-    gl.getUniformLocation(program, "u_lightWorldPosition");
-  var lightWorldPositionLocation2 =
-    gl.getUniformLocation(program, "u_lightWorldPosition2");
-  var viewWorldPositionLocation =
-    gl.getUniformLocation(program, "u_viewWorldPosition");
-  var worldLocation =
-    gl.getUniformLocation(program, "u_world");
-  var diffuseColorLocation =
-    gl.getUniformLocation(program, "u_diffuseColor");
-  var diffuseColorLocation2 =
-    gl.getUniformLocation(program, "u_diffuseColor2");
-  var specularColorLocation =
-    gl.getUniformLocation(program, "u_specularColor");
-  var specularColorLocation2 =
-    gl.getUniformLocation(program, "u_specularColor2");
-  var ambientColorLocation =
-    gl.getUniformLocation(program, "u_ambientColor");
-
+  var lightWorldPositionLocation = gl.getUniformLocation(program, "u_lightWorldPosition");
+  var lightWorldPositionLocation2 = gl.getUniformLocation(program, "u_lightWorldPosition2");
+  var viewWorldPositionLocation = gl.getUniformLocation(program, "u_viewWorldPosition");
+  var worldLocation = gl.getUniformLocation(program, "u_world");
+  var diffuseColorLocation = gl.getUniformLocation(program, "u_diffuseColor");
+  var diffuseColorLocation2 = gl.getUniformLocation(program, "u_diffuseColor2");
+  var specularColorLocation = gl.getUniformLocation(program, "u_specularColor");
+  var specularColorLocation2 = gl.getUniformLocation(program, "u_specularColor2");
+  var ambientColorLocation = gl.getUniformLocation(program, "u_ambientColor");
+  var textureLocation = gl.getUniformLocation(program, "u_texture");
+  var hasTextureLocation = gl.getUniformLocation(program, "u_hastexture");
+  var isSelectedLocation = gl.getUniformLocation(program, "u_isSelected");
   // look up where the vertex data needs to go.
   var positionLocation = gl.getAttribLocation(program, "a_position");
   var normalLocation = gl.getAttribLocation(program, "a_normal");
+  var texcoordLocation = gl.getAttribLocation(program, "a_texcoord");
 
-  // Create buffers to put positions and normals in
+  // Create buffers to put position, normal and texture
   var positionBuffer = gl.createBuffer();
   var normalBuffer = gl.createBuffer();
+  var texcoordBuffer = gl.createBuffer();
+
+  // Now that the image has loaded make copy it to the texture.
+  var texture = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+  function isPowerOf2(value) {
+    return (value & (value - 1)) === 0;
+  }
 
   function radToDeg(r) {
     return r * 180 / Math.PI;
@@ -512,15 +539,24 @@ async function main() {
       gl.enableVertexAttribArray(positionLocation);
       // Bind the position buffer.
       gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      setGeometry(gl, f.vertices);
+      gl.bufferData(gl.ARRAY_BUFFER, f.vertices.position, gl.STATIC_DRAW);
       gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
 
       // Turn on the normal attribute
       gl.enableVertexAttribArray(normalLocation);
       // Bind the normal buffer.
       gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-      setNormals(gl, f.vertices);
+      gl.bufferData(gl.ARRAY_BUFFER, f.vertices.normal, gl.STATIC_DRAW);
       gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, 0, 0);
+
+      if (f.hasTexture)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, f.image);
+      // Turn on the texcoord attribute
+      gl.enableVertexAttribArray(texcoordLocation);
+      // Bind the texture buffer.
+      gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, f.vertices.texcoord, gl.STATIC_DRAW);
+      gl.vertexAttribPointer(texcoordLocation, f.texMagic, gl.FLOAT, false, 0, 0);
 
       // Compute Matrix
       var matrix = m4.translate(m4.identity(),
@@ -534,10 +570,7 @@ async function main() {
 
       var worldMatrix = matrix;
       // Set the color to use
-      var fColor = [...f.color, 1];
-      if (currentFigure != -1 && f.id == fs[currentFigure].id)
-        fColor[3] = 0.5;
-      gl.uniform4fv(colorLocation, fColor);
+      gl.uniform4fv(colorLocation, [...f.color, 1]);
       // Multiply the matrices.
       var worldViewProjectionMatrix = m4.multiply(viewProjectionMatrix, worldMatrix);
       var worldInverseMatrix = m4.inverse(worldMatrix);
@@ -546,6 +579,11 @@ async function main() {
       gl.uniformMatrix4fv(worldViewProjectionLocation, false, worldViewProjectionMatrix);
       gl.uniformMatrix4fv(worldInverseTransposeLocation, false, worldInverseTransposeMatrix);
       gl.uniformMatrix4fv(worldLocation, false, worldMatrix);
+
+      // Tell the shader to use texture unit 0 for u_texture
+      gl.uniform1i(textureLocation, 0);
+      gl.uniform1i(hasTextureLocation, f.hasTexture);
+      gl.uniform1i(isSelectedLocation, currentFigure != -1 && f.id == fs[currentFigure].id);
 
       gl.drawArrays(gl.TRIANGLES, 0, f.vertices.position.numElements);
     }
@@ -556,11 +594,15 @@ async function main() {
 
 function setGeometry(gl, vertices) {
   gl.bufferData(gl.ARRAY_BUFFER, vertices.position, gl.STATIC_DRAW);
-  // console.log(vertices.position);
 }
 
 function setNormals(gl, vertices) {
   gl.bufferData(gl.ARRAY_BUFFER, vertices.normal, gl.STATIC_DRAW);
+}
+
+// Fill the buffer with texture coordinates the F.
+function setTexcoords(gl, vertices) {
+  gl.bufferData(gl.ARRAY_BUFFER, vertices.texcoord, gl.STATIC_DRAW);
 }
 
 function rand(min, max) {
