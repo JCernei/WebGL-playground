@@ -41,10 +41,12 @@ var shapes = [];
 const CUBE_SHAPE = 0;
 const SPHERE_SHAPE = 1;
 const CONE_SHAPE = 2;
+const OBJ_SHAPE = 3;
 var shapeNames = {};
 shapeNames[CUBE_SHAPE] = "Cube";
 shapeNames[SPHERE_SHAPE] = "Sphere";
 shapeNames[CONE_SHAPE] = "Cone";
+shapeNames[OBJ_SHAPE] = "OBJ";
 var ID = 0;
 var currentFigure = -1;
 var currentLight = -1;
@@ -230,7 +232,97 @@ function rgbToHex(rgb) {
   return "#" + ((1 << 24) + (Math.round(rgb[0] * 256) << 16) + (Math.round(rgb[1] * 256) << 8) + Math.round(rgb[2] * 256)).toString(16).slice(1);
 }
 
-function main() {
+function parseOBJ(text) {
+  // because indices are base 1 let's just fill in the 0th data
+  const objPositions = [[0, 0, 0]];
+  const objTexcoords = [[0, 0]];
+  const objNormals = [[0, 0, 0]];
+
+  // same order as `f` indices
+  const objVertexData = [
+    objPositions,
+    objTexcoords,
+    objNormals,
+  ];
+
+  // same order as `f` indices
+  let webglVertexData = [
+    [],   // positions
+    [],   // texcoords
+    [],   // normals
+  ];
+
+  function newGeometry() {
+    // If there is an existing geometry and it's
+    // not empty then start a new one.
+    if (geometry && geometry.data.position.length) {
+      geometry = undefined;
+    }
+    setGeometry();
+  }
+
+  function addVertex(vert) {
+    const ptn = vert.split('/');
+    ptn.forEach((objIndexStr, i) => {
+      if (!objIndexStr) {
+        return;
+      }
+      const objIndex = parseInt(objIndexStr);
+      const index = objIndex + (objIndex >= 0 ? 0 : objVertexData[i].length);
+      webglVertexData[i].push(...objVertexData[i][index]);
+    });
+  }
+
+  const keywords = {
+    v(parts) {
+      objPositions.push(parts.map(parseFloat));
+    },
+    vn(parts) {
+      objNormals.push(parts.map(parseFloat));
+    },
+    vt(parts) {
+      // should check for missing v and extra w?
+      objTexcoords.push(parts.map(parseFloat));
+    },
+    f(parts) {
+      const numTriangles = parts.length - 2;
+      for (let tri = 0; tri < numTriangles; ++tri) {
+        addVertex(parts[0]);
+        addVertex(parts[tri + 1]);
+        addVertex(parts[tri + 2]);
+      }
+    },
+  };
+
+  const keywordRE = /(\w*)(?: )*(.*)/;
+  const lines = text.split('\n');
+  for (let lineNo = 0; lineNo < lines.length; ++lineNo) {
+    const line = lines[lineNo].trim();
+    if (line === '' || line.startsWith('#')) {
+      continue;
+    }
+    const m = keywordRE.exec(line);
+    if (!m) {
+      continue;
+    }
+    const [, keyword, unparsedArgs] = m;
+    const parts = line.split(/\s+/).slice(1);
+    const handler = keywords[keyword];
+    if (!handler) {
+      console.warn('unhandled keyword:', keyword);  // eslint-disable-line no-console
+      continue;
+    }
+    handler(parts, unparsedArgs);
+  }
+
+  return {
+    position: new Float32Array(webglVertexData[0]),
+    texcoord: new Float32Array(webglVertexData[1]),
+    normal: new Float32Array(webglVertexData[2]),
+  };
+}
+
+async function main() {
   // Get A WebGL context
   /** @type {HTMLCanvasElement} */
   var canvas = document.querySelector("#canvas");
@@ -238,6 +330,10 @@ function main() {
   if (!gl) {
     return;
   }
+  const response = await fetch('https://gist.githubusercontent.com/JCernei/0e1831604aecbc121750446559596b04/raw/14ac2e0ff691e1f886b8066295274d2e0a613655/dragon.obj'); // https://webglfundamentals.org/webgl/resources/models/cube/cube.obj
+  const text = await response.text();
+  var data = parseOBJ(text);
+  const bufferInfo = webglUtils.createBufferInfoFromArrays(gl, data);
 
   // setup GLSL program
   var programInfo = webglUtils.createProgramInfo(gl, ["vertex-shader-3d", "fragment-shader-3d"]);
@@ -271,17 +367,29 @@ function main() {
     },
   });
 
+  // data.normal = cubeVertices.normal;
+  // data.position = cubeVertices.position;
+  data.position = data.position.map(function (x) { return x * 10; });
+  data.position.numElements = webglUtils.getNumElementsFromNonIndexedArrays(data);
+
   shapes = [
     cubeVertices,
     sphereVertices,
     coneVertices,
+    data
   ];
+
+  console.log("------------------------------------");
+  console.log(cubeVertices);
+  console.log(data);
+  // console.log(bufferInfo);
 
   ls.push(new MyLight());
   ls.push(new MyLight());
   fs.push(new MyFigure(SPHERE_SHAPE));
   fs.push(new MyFigure(CUBE_SHAPE));
   fs.push(new MyFigure(CONE_SHAPE));
+  fs.push(new MyFigure(OBJ_SHAPE));
   drawFiguresTable()
 
   // lookup uniforms
@@ -446,13 +554,13 @@ function main() {
   }
 }
 
-// Fill the buffer with the values that define a letter 'F'.
-function setGeometry(gl, gVertices) {
-  gl.bufferData(gl.ARRAY_BUFFER, gVertices.position, gl.STATIC_DRAW);
+function setGeometry(gl, vertices) {
+  gl.bufferData(gl.ARRAY_BUFFER, vertices.position, gl.STATIC_DRAW);
+  // console.log(vertices.position);
 }
 
-function setNormals(gl, nVertices) {
-  gl.bufferData(gl.ARRAY_BUFFER, nVertices.normal, gl.STATIC_DRAW);
+function setNormals(gl, vertices) {
+  gl.bufferData(gl.ARRAY_BUFFER, vertices.normal, gl.STATIC_DRAW);
 }
 
 function rand(min, max) {
